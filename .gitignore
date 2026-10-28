@@ -2,3 +2,20 @@
 /CLAUDE.md
 /AGENTS.md
 /tmp/
+
+# Installed dependencies and production output
+/node_modules/
+/dist/
+
+# Local tooling and reports
+/.vite/
+/.vitest/
+/coverage/
+/.eslintcache
+/.vercel/
+*.log
+
+# Local environment files
+.env
+.env.*
+!.env.example
