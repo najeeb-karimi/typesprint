@@ -5,20 +5,24 @@ export default function AttemptResults({ results }) {
       <dl className="result-metrics">
         <div className="result-metric">
           <dt>Elapsed time</dt>
-          <dd>{results.time}</dd>
+          <dd><span className="result-value">{results.time}</span></dd>
         </div>
         <div className="result-metric">
           <dt>Speed</dt>
-          <dd>{results.speed} <span className="result-unit">WPM</span></dd>
+          <dd>
+            <span className="result-value">{results.speed}</span>{' '}
+            <span className="result-unit">WPM</span>
+          </dd>
         </div>
         <div className="result-metric">
           <dt>Accuracy</dt>
-          <dd>{results.accuracy}</dd>
+          <dd><span className="result-value">{results.accuracy}</span></dd>
         </div>
       </dl>
       {results.explanation && <p className="result-explanation">{results.explanation}</p>}
       <p className="result-definition">
-        WPM is words per minute, using five characters per word. Accuracy includes corrected mistakes.
+        Time is minutes:seconds. WPM means words per minute, using five characters per word.
+        Accuracy includes corrected mistakes.
       </p>
     </section>
   )

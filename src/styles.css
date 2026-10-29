@@ -353,6 +353,10 @@ h1 span {
   gap: var(--space-5);
 }
 
+.session-clock > div {
+  min-width: 0;
+}
+
 .clock-label,
 .clock-hint,
 .result-metric dt,
@@ -372,9 +376,16 @@ h1 span {
   overflow-wrap: anywhere;
 }
 
+.clock-reading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
 .clock-value {
   display: block;
-  margin-top: var(--space-1);
   font-size: 1.5rem;
   line-height: 1.4;
 }
@@ -404,15 +415,27 @@ h1 span {
 }
 
 .result-metric dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
   margin: var(--space-1) 0 0;
   font-size: 1.75rem;
   line-height: 1.4;
 }
 
+.result-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.clock-unit,
 .result-unit {
   color: var(--color-muted);
   font-family: var(--font-sans);
   font-size: 0.75rem;
+  line-height: 1.5;
+  white-space: nowrap;
 }
 
 .result-explanation {
@@ -541,6 +564,16 @@ h1 span {
     padding: var(--space-5);
   }
 
+  .session-clock {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .clock-hint {
+    max-width: none;
+    text-align: left;
+  }
+
   .result-metrics {
     grid-template-columns: 1fr;
     gap: var(--space-3);
@@ -548,14 +581,22 @@ h1 span {
 
   .result-metric {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
     justify-content: space-between;
-    gap: var(--space-3);
+    column-gap: var(--space-3);
+    row-gap: var(--space-1);
+  }
+
+  .result-metric dt {
+    min-width: 0;
   }
 
   .result-metric dd {
+    max-width: 100%;
     min-width: 0;
-    margin: 0;
+    justify-content: flex-end;
+    margin: 0 0 0 auto;
     text-align: right;
   }
 
