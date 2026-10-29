@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App.jsx'
 import PracticeSession from './PracticeSession.jsx'
 
 const PASSAGE =
   'Small steps build steady progress. Take a breath, find your rhythm, and let each careful keystroke bring the next word into focus.'
+const INSTRUCTIONS = 'Type the passage yourself. Paste and text drops are unavailable.'
 const READY_MESSAGE =
   'Type the passage above. Match every character, including spaces and punctuation.'
 
@@ -20,7 +21,7 @@ describe('untimed practice', () => {
     expect(input).not.toHaveAttribute('readonly')
     expect(input).toHaveValue('')
     expect(input).toHaveAttribute('maxlength', '130')
-    expect(input).toHaveAccessibleDescription(PASSAGE + ' ' + READY_MESSAGE)
+    expect(input).toHaveAccessibleDescription(PASSAGE + ' ' + INSTRUCTIONS + ' ' + READY_MESSAGE)
     expect(progress).toHaveAttribute('value', '0')
     expect(progress).toHaveAttribute('max', '130')
     expect(screen.getByText('0 current mistakes')).toBeVisible()
@@ -111,11 +112,12 @@ describe('untimed practice', () => {
   it('clears current feedback and focuses the textarea on repeated restarts, including after completion', async () => {
     const user = userEvent.setup()
     const { container } = render(<PracticeSession passage="Hi." />)
-    const input = screen.getByRole('textbox', { name: 'Your typing' })
+    let input = screen.getByRole('textbox', { name: 'Your typing' })
     const restart = screen.getByRole('button', { name: 'Restart' })
 
     await user.type(input, 'Hx')
     await user.click(restart)
+    input = screen.getByRole('textbox', { name: 'Your typing' })
     expect(input).toHaveValue('')
     expect(input).toHaveFocus()
     expect(screen.getByText('0 current mistakes')).toBeVisible()
@@ -128,41 +130,101 @@ describe('untimed practice', () => {
     await user.tab()
     expect(restart).toHaveFocus()
     await user.keyboard('{Enter}')
+    input = screen.getByRole('textbox', { name: 'Your typing' })
     expect(input).toHaveValue('')
     expect(input).not.toHaveAttribute('readonly')
     expect(input).toHaveFocus()
     expect(screen.getByRole('status')).toHaveTextContent(READY_MESSAGE)
 
     await user.click(restart)
+    input = screen.getByRole('textbox', { name: 'Your typing' })
     expect(input).toHaveValue('')
     expect(input).toHaveFocus()
     await user.type(input, 'Hi.')
     expect(screen.getByRole('status')).toHaveTextContent('Passage complete.')
   })
 
-  it('accepts paste while enforcing the native length limit', async () => {
+  it('blocks paste before typing with visible instructions and restrained feedback', async () => {
     const user = userEvent.setup()
     render(<App />)
     const input = screen.getByRole('textbox', { name: 'Your typing' })
 
+    expect(screen.getByText(INSTRUCTIONS)).toBeVisible()
     await user.click(input)
     await user.paste(PASSAGE + ' extra text')
-    expect(input).toHaveValue(PASSAGE)
-    expect(screen.getByRole('progressbar')).toHaveAttribute('value', '130')
-    expect(screen.getByRole('status')).toHaveTextContent('Passage complete.')
+    expect(input).toHaveValue('')
+    expect(input).toHaveFocus()
+    expect(screen.getByRole('progressbar')).toHaveAttribute('value', '0')
+    expect(screen.getByRole('status')).toHaveTextContent('Paste is unavailable.')
+
+    await user.type(input, 'S')
+    expect(input).toHaveValue('S')
+    expect(screen.getByRole('status')).toHaveTextContent('Keep your pace.')
   })
 
-  it('limits pasted replacement text to the space available in the selected range', async () => {
+  it('blocks a selected-range paste and text drop without replacing typed text', async () => {
     const user = userEvent.setup()
     render(<PracticeSession passage="abcde" />)
     const input = screen.getByRole('textbox', { name: 'Your typing' })
 
-    await user.click(input)
-    await user.paste('abXde')
+    await user.type(input, 'abXde')
     input.setSelectionRange(2, 3)
     await user.paste('cZZZ')
+    expect(input).toHaveValue('abXde')
+    expect([input.selectionStart, input.selectionEnd]).toEqual([2, 3])
+    expect(screen.getByRole('status')).toHaveTextContent('Paste is unavailable.')
+
+    expect(fireEvent.drop(input)).toBe(false)
+    expect(input).toHaveValue('abXde')
+    expect(screen.getByRole('status')).toHaveTextContent('Text drops are unavailable.')
+
+    await user.keyboard('cZZZ')
     expect(input).toHaveValue('abcde')
     expect(input).toHaveAttribute('readonly')
+  })
+
+  it('retains the native limit for typed text while a full-length mistake remains editable', async () => {
+    const user = userEvent.setup()
+    render(<PracticeSession passage="abc" />)
+    const input = screen.getByRole('textbox', { name: 'Your typing' })
+
+    await user.type(input, 'abXextra')
+    expect(input).toHaveValue('abX')
+    expect(input).not.toHaveAttribute('readonly')
+    expect(screen.getByText('1 current mistake')).toBeVisible()
+    input.setSelectionRange(2, 3)
+    await user.keyboard('c')
+    expect(input).toHaveValue('abc')
+    expect(input).toHaveAttribute('readonly')
+  })
+
+  it('explains unavailable scores while preserving editing and exact completion', () => {
+    render(<PracticeSession passage="cat" />)
+    const input = screen.getByRole('textbox', { name: 'Your typing' })
+
+    fireEvent.change(input, { target: { value: 'cx' } })
+    expect(input).toHaveValue('cx')
+    expect(input).not.toHaveAttribute('readonly')
+    expect(screen.getByRole('status')).toHaveTextContent('Scores are unavailable')
+    fireEvent.change(input, { target: { value: 'cat' } })
+    expect(input).toHaveAttribute('readonly')
+    expect(screen.getByRole('status')).toHaveTextContent('Passage complete. Scores are unavailable')
+  })
+
+  it('starts a fresh field and attempt when its target passage changes', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<PracticeSession passage="cat" />)
+    const oldInput = screen.getByRole('textbox', { name: 'Your typing' })
+    await user.type(oldInput, 'cx')
+
+    rerender(<PracticeSession passage="dog" />)
+    const input = screen.getByRole('textbox', { name: 'Your typing' })
+    expect(input).not.toBe(oldInput)
+    expect(input).toHaveValue('')
+    expect(input).not.toHaveAttribute('readonly')
+    await user.type(input, 'dog')
+    expect(input).toHaveAttribute('readonly')
+    expect(screen.getByRole('status')).toHaveTextContent('Passage complete.')
   })
 
   it('updates progress and current mistakes without changing the routine live message on every edit', async () => {
