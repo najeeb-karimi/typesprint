@@ -340,6 +340,85 @@ h1 span {
   color: var(--color-success);
 }
 
+.session-clock,
+.attempt-results {
+  padding: var(--space-5) var(--space-8);
+  border-top: 1px solid var(--color-border);
+}
+
+.session-clock {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.clock-label,
+.clock-hint,
+.result-metric dt,
+.result-definition,
+.result-explanation {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  line-height: 1.65;
+}
+
+.clock-value,
+.result-metric dd {
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.clock-value {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: 1.5rem;
+  line-height: 1.4;
+}
+
+.clock-hint {
+  max-width: 13rem;
+  text-align: right;
+}
+
+.attempt-results h2 {
+  margin: 0;
+  color: var(--color-success);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.result-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-5);
+  margin: var(--space-4) 0;
+}
+
+.result-metric {
+  min-width: 0;
+}
+
+.result-metric dd {
+  margin: var(--space-1) 0 0;
+  font-size: 1.75rem;
+  line-height: 1.4;
+}
+
+.result-unit {
+  color: var(--color-muted);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+}
+
+.result-explanation {
+  margin-bottom: var(--space-3);
+}
+
 .session-footer {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -455,6 +534,29 @@ h1 span {
   .passage-area,
   .typing-area {
     padding: var(--space-5);
+  }
+
+  .session-clock,
+  .attempt-results {
+    padding: var(--space-5);
+  }
+
+  .result-metrics {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  .result-metric {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .result-metric dd {
+    min-width: 0;
+    margin: 0;
+    text-align: right;
   }
 
   .session-footer {

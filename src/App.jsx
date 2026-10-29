@@ -20,12 +20,12 @@ export default function App() {
 
       <main id="main-content" tabIndex={-1}>
         <div className="introduction">
-          <p className="eyebrow">Untimed practice</p>
+          <p className="eyebrow">Passage practice</p>
           <h1>
             Find your <span>typing rhythm.</span>
           </h1>
           <p className="introduction-copy">
-            No clock. No rush. Just you and the next word.
+            No countdown. Just you and the next word.
           </p>
         </div>
 

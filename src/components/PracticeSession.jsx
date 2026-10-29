@@ -1,33 +1,39 @@
 import { usePracticeAttempt } from '../hooks/usePracticeAttempt.js'
 import { comparePassage } from '../lib/comparePassage.js'
+import { formatAttemptResults, formatElapsedTime } from '../lib/formatAttemptMetrics.js'
 import PassageDisplay from './PassageDisplay.jsx'
+import AttemptResults from './AttemptResults.jsx'
 
 export default function PracticeSession({ passage }) {
   return <PracticeSessionContent key={passage} passage={passage} />
 }
 
 function PracticeSessionContent({ passage }) {
-  const { attempt, inputRef, inputVersion, handleChange, restriction, restart } = usePracticeAttempt(passage)
+  const {
+    attempt, metrics, inputRef, inputVersion, handleChange, restriction, restart,
+  } = usePracticeAttempt(passage)
   const { input } = attempt
   const { characters, enteredCount, mistakeCount } = comparePassage(passage, input)
   const isComplete = attempt.status === 'completed'
+  const results = isComplete ? formatAttemptResults(metrics, attempt.scoringUnavailableReason) : null
 
   let status = 'Type the passage above. Match every character, including spaces and punctuation.'
 
   if (attempt.isComposing) {
     status = 'Finish composing the current text to continue.'
   } else if (isComplete) {
-    status = 'Passage complete. Every character matches. Restart when you’re ready.'
+    status = ['Passage complete.', results.announcement, results.explanation, 'Restart when you’re ready.']
+      .filter(Boolean).join(' ')
   } else if (enteredCount === passage.length) {
     status = 'You’ve reached the end. Correct the marked characters to finish.'
   } else if (enteredCount > 0) {
     status = 'Keep your pace. You can go back and correct any character.'
+  } else if (attempt.status === 'running') {
+    status = 'Your attempt is still running. Keep typing or restart for a fresh attempt.'
   }
 
-  if (attempt.scoringUnavailableReason) {
-    status = isComplete
-      ? 'Passage complete. Scores are unavailable because an edit could not be measured. Restart when you’re ready.'
-      : 'Scores are unavailable because an edit could not be measured. You can keep typing or restart.'
+  if (attempt.scoringUnavailableReason && !isComplete) {
+    status = 'Scores are unavailable because an edit could not be measured. You can keep typing or restart.'
   }
 
   if (restriction && !isComplete) status = restriction
@@ -86,6 +92,22 @@ function PracticeSessionContent({ passage }) {
           <span>{status}</span>
         </p>
       </div>
+
+      {isComplete ? (
+        <AttemptResults results={results} />
+      ) : (
+        <div className="session-clock">
+          <div>
+            <p id="elapsed-time-label" className="clock-label">Elapsed time</p>
+            <span className="clock-value" role="timer" aria-labelledby="elapsed-time-label" aria-live="off">
+              {formatElapsedTime(metrics.elapsedMs)}
+            </span>
+          </div>
+          <p className="clock-hint">
+            {attempt.status === 'ready' ? 'Starts with your first character.' : 'Pauses and time away count.'}
+          </p>
+        </div>
+      )}
 
       <div className="session-footer">
         <div className="progress-group">
