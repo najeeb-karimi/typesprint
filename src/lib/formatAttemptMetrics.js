@@ -26,3 +26,43 @@ export function formatAccuracy(accuracy) {
     ? `${accuracy.toFixed(1)}%`
     : UNAVAILABLE
 }
+
+/** Keep visible results and the single completion announcement in agreement. */
+export function formatAttemptResults(metrics, scoringUnavailableReason = null) {
+  const time = formatElapsedTime(metrics.elapsedMs, { includeTenths: true })
+  const speed = formatWpm(metrics.wpm)
+  const accuracy = formatAccuracy(metrics.accuracy)
+  const notes = []
+
+  if (scoringUnavailableReason) {
+    if (metrics.elapsedMs === null) notes.push('Time could not be measured.')
+    notes.push('Speed and accuracy are unavailable because an edit could not be measured.')
+  } else {
+    if (metrics.elapsedMs === null) {
+      notes.push('Time and speed are unavailable because the duration could not be measured.')
+    } else if (metrics.wpm === null) {
+      notes.push(metrics.elapsedMs === 0
+        ? 'Speed is unavailable because no positive duration was measured.'
+        : 'Speed could not be calculated from this duration.')
+    }
+    if (metrics.accuracy === null) {
+      notes.push('Accuracy is unavailable because no character entries were recorded.')
+    }
+  }
+
+  let spokenTime = 'unavailable'
+  if (time !== UNAVAILABLE) {
+    const [minutes, seconds] = time.split(':')
+    spokenTime = `${Number(minutes)} ${Number(minutes) === 1 ? 'minute' : 'minutes'} and ${Number(seconds).toFixed(1)} seconds`
+  }
+  const spokenSpeed = speed === UNAVAILABLE ? 'unavailable' : `${speed} words per minute`
+  const spokenAccuracy = accuracy === UNAVAILABLE ? 'unavailable' : accuracy
+
+  return {
+    time,
+    speed,
+    accuracy,
+    explanation: notes.join(' '),
+    announcement: `Time: ${spokenTime}. Speed: ${spokenSpeed}. Accuracy: ${spokenAccuracy}.`,
+  }
+}

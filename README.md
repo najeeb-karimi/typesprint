@@ -7,11 +7,12 @@ A focused typing game built with React, JavaScript, Vite, and plain CSS. Practic
 - One fixed English passage with feedback for correct, incorrect, and remaining characters.
 - Underlined mistakes, visible incorrect spaces, and a marker for the next unentered character.
 - Entered-character progress and current mistake counts.
+- Elapsed time from the first character, with frozen time, speed, and historical accuracy results on completion.
 - Native text editing, selection, Backspace, Delete, Cut, Undo, and Redo; paste and text drops are blocked.
 - Exact-match completion that leaves the finished text read-only; Restart clears the attempt and returns focus to the typing field.
 - Responsive layout, labeled controls, visible keyboard focus, and restrained status announcements.
 
-This milestone is untimed. It has no speed or accuracy score, saved records, accounts, or random passages. Progress measures entered text; a full progress bar does not mean completion while mistakes remain.
+Practice has no time limit. The clock starts with the first text entry and continues through pauses and time away. Speed uses five passage characters per word; accuracy includes corrected mistakes. Results are not saved, and there are no accounts or random passages. Progress measures entered text; a full progress bar does not mean completion while mistakes remain.
 
 ## Prerequisites
 

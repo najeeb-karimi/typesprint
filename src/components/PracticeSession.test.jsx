@@ -10,7 +10,7 @@ const INSTRUCTIONS = 'Type the passage yourself. Paste and text drops are unavai
 const READY_MESSAGE =
   'Type the passage above. Match every character, including spaces and punctuation.'
 
-describe('untimed practice', () => {
+describe('passage practice', () => {
   it('opens ready for editing without autofocus, with clear keyboard order and a coherent passage', async () => {
     const user = userEvent.setup()
     render(<App />)
@@ -208,7 +208,8 @@ describe('untimed practice', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Scores are unavailable')
     fireEvent.change(input, { target: { value: 'cat' } })
     expect(input).toHaveAttribute('readonly')
-    expect(screen.getByRole('status')).toHaveTextContent('Passage complete. Scores are unavailable')
+    expect(screen.getByRole('status')).toHaveTextContent('Passage complete.')
+    expect(screen.getByRole('region', { name: 'Your results' })).toHaveTextContent('Speed and accuracy are unavailable')
   })
 
   it('starts a fresh field and attempt when its target passage changes', async () => {
@@ -241,6 +242,6 @@ describe('untimed practice', () => {
     await user.clear(input)
     expect(screen.getByText('0 current mistakes')).toBeVisible()
     expect(screen.getByRole('progressbar')).toHaveAttribute('value', '0')
-    expect(status).toHaveTextContent(READY_MESSAGE)
+    expect(status).toHaveTextContent('Your attempt is still running.')
   })
 })
