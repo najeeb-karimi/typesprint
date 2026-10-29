@@ -93,11 +93,118 @@ describe('elapsed time and completed results', () => {
 
     expect(results().getByText('0:30.0')).toBeVisible()
     expect(results().getByText('52')).toBeVisible()
+    expect(results().getByText('52').closest('dd')).toHaveTextContent('52 WPM')
     expect(results().getByText('100.0%')).toBeVisible()
     expect(screen.getByRole('status')).toHaveTextContent('52 words per minute')
+    expect(screen.getByText('Passage complete. Your results are ready below.')).toBeVisible()
+    expect(results().getByText(/Time is minutes:seconds/)).toBeVisible()
     expect(input).toHaveAttribute('readonly')
     expect(input).toHaveFocus()
     expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('keeps timing and historical mistakes through blocked actions, clearing, completion, and repeated fresh attempts', async () => {
+    const typing = user()
+    render(<StrictMode><PracticeSession passage="cat" /></StrictMode>)
+    let input = screen.getByRole('textbox')
+    const restart = screen.getByRole('button', { name: 'Restart' })
+
+    clock = 1000
+    await typing.type(input, 'cx')
+    refreshAt(2000)
+    input.setSelectionRange(1, 2)
+    await typing.paste('a')
+    expect(fireEvent.drop(input)).toBe(false)
+    expect(input).toHaveValue('cx')
+    expect(screen.getByRole('timer')).toHaveTextContent('0:01')
+    expect(screen.queryByRole('region', { name: 'Your results' })).toBeNull()
+
+    await typing.clear(input)
+    expect(screen.getByRole('progressbar')).toHaveAttribute('value', '0')
+    expect(screen.getByText('0 current mistakes')).toBeVisible()
+    expect(screen.getByRole('status')).toHaveTextContent('Your attempt is still running.')
+    refreshAt(11_000)
+    expect(screen.getByRole('timer')).toHaveTextContent('0:10')
+
+    clock = 31_000
+    await typing.type(input, 'cat')
+    expect(results().getByText('0:30.0')).toBeVisible()
+    expect(results().getByText('1')).toBeVisible()
+    expect(results().getByText('80.0%')).toBeVisible()
+    expect(screen.getByRole('status')).toHaveTextContent('Accuracy: 80.0%.')
+    expect(input).toHaveAttribute('readonly')
+    expect(input).toHaveFocus()
+    const finalMessage = screen.getByRole('status').textContent
+    refreshAt(50_000)
+    expect(screen.getByRole('status').textContent).toBe(finalMessage)
+    expect(results().getByText('0:30.0')).toBeVisible()
+
+    await typing.tab()
+    expect(restart).toHaveFocus()
+    await typing.keyboard('{Enter}')
+    input = screen.getByRole('textbox')
+    expect(input).toHaveValue('')
+    expect(input).toHaveFocus()
+    expect(input).not.toHaveAttribute('readonly')
+    expect(screen.getByRole('timer')).toHaveTextContent('0:00')
+    expect(screen.queryByRole('region', { name: 'Your results' })).toBeNull()
+
+    await typing.click(restart)
+    input = screen.getByRole('textbox')
+    expect(input).toHaveFocus()
+    clock = 60_000
+    await typing.type(input, 'c')
+    clock = 70_000
+    await typing.type(input, 'at')
+    expect(results().getByText('0:10.0')).toBeVisible()
+    expect(results().getByText('4')).toBeVisible()
+    expect(results().getByText('100.0%')).toBeVisible()
+
+    await typing.tab()
+    await typing.keyboard('{Enter}')
+    input = screen.getByRole('textbox')
+    await typing.paste('cat')
+    expect(input).toHaveValue('')
+    expect(screen.getByRole('timer')).toHaveTextContent('0:00')
+    expect(screen.getByRole('status')).toHaveTextContent('Paste is unavailable.')
+    await typing.click(restart)
+    input = screen.getByRole('textbox')
+    expect(input).toHaveFocus()
+    expect(screen.getByRole('status')).not.toHaveTextContent('unavailable')
+    expect(screen.queryByRole('region', { name: 'Your results' })).toBeNull()
+
+    clock = 90_000
+    await typing.type(input, 'c')
+    clock = 120_000
+    await typing.type(input, 'at')
+    expect(results().getByText('0:30.0')).toBeVisible()
+    expect(results().getByText('100.0%')).toBeVisible()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('restores measured results after restarting an attempt with an untracked edit', async () => {
+    const typing = user()
+    render(<PracticeSession passage="cat" />)
+    let input = screen.getByRole('textbox')
+    await typing.click(input)
+    fireEvent.change(input, { target: { value: 'cx' } })
+    clock = 3000
+    fireEvent.change(input, { target: { value: 'cat' } })
+    expect(results().getAllByText('—')).toHaveLength(2)
+    expect(results().getByText(/an edit could not be measured/)).toBeVisible()
+
+    await typing.tab()
+    await typing.keyboard('{Enter}')
+    input = screen.getByRole('textbox')
+    clock = 5000
+    await typing.type(input, 'c')
+    clock = 35_000
+    await typing.type(input, 'at')
+    expect(results().getByText('0:30.0')).toBeVisible()
+    expect(results().getByText('1')).toBeVisible()
+    expect(results().getByText('100.0%')).toBeVisible()
+    expect(results().queryByText(/an edit could not be measured/)).toBeNull()
+    expect(screen.getByRole('status')).not.toHaveTextContent('unavailable')
   })
 
   it('finishes at the correcting edit between ticks and freezes all results and the completion announcement', async () => {

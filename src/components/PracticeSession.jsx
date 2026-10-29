@@ -22,8 +22,7 @@ function PracticeSessionContent({ passage }) {
   if (attempt.isComposing) {
     status = 'Finish composing the current text to continue.'
   } else if (isComplete) {
-    status = ['Passage complete.', results.announcement, results.explanation, 'Restart when you’re ready.']
-      .filter(Boolean).join(' ')
+    status = 'Passage complete. Your results are ready below.'
   } else if (enteredCount === passage.length) {
     status = 'You’ve reached the end. Correct the marked characters to finish.'
   } else if (enteredCount > 0) {
@@ -89,7 +88,15 @@ function PracticeSessionContent({ passage }) {
             <circle cx="12" cy="12" r="9" />
             {isComplete ? <path d="m8 12 3 3 5-6" /> : <path d="M12 11v6M12 7h.01" />}
           </svg>
-          <span>{status}</span>
+          <span>
+            {status}
+            {isComplete && (
+              <span className="sr-only">
+                {' '}{[results.announcement, results.explanation, 'Restart when you’re ready.']
+                  .filter(Boolean).join(' ')}
+              </span>
+            )}
+          </span>
         </p>
       </div>
 
@@ -99,9 +106,12 @@ function PracticeSessionContent({ passage }) {
         <div className="session-clock">
           <div>
             <p id="elapsed-time-label" className="clock-label">Elapsed time</p>
-            <span className="clock-value" role="timer" aria-labelledby="elapsed-time-label" aria-live="off">
-              {formatElapsedTime(metrics.elapsedMs)}
-            </span>
+            <div className="clock-reading">
+              <span className="clock-value" role="timer" aria-labelledby="elapsed-time-label" aria-live="off">
+                {formatElapsedTime(metrics.elapsedMs)}
+              </span>
+              <span className="clock-unit">min:sec</span>
+            </div>
           </div>
           <p className="clock-hint">
             {attempt.status === 'ready' ? 'Starts with your first character.' : 'Pauses and time away count.'}
