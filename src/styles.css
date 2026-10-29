@@ -275,6 +275,13 @@ h1 span {
   color: var(--color-error);
 }
 
+.practice-instructions {
+  margin: 0 0 var(--space-3);
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  line-height: 1.65;
+}
+
 .typing-input {
   display: block;
   width: 100%;

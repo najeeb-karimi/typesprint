@@ -7,7 +7,7 @@ A focused typing game built with React, JavaScript, Vite, and plain CSS. Practic
 - One fixed English passage with feedback for correct, incorrect, and remaining characters.
 - Underlined mistakes, visible incorrect spaces, and a marker for the next unentered character.
 - Entered-character progress and current mistake counts.
-- Native text editing, selection, Backspace, paste, and Undo.
+- Native text editing, selection, Backspace, Delete, Cut, Undo, and Redo; paste and text drops are blocked.
 - Exact-match completion that leaves the finished text read-only; Restart clears the attempt and returns focus to the typing field.
 - Responsive layout, labeled controls, visible keyboard focus, and restrained status announcements.
 
@@ -53,7 +53,7 @@ This runs lint, the automated tests, and the production build in order, stopping
 | `npm run test:watch` | Rerun relevant tests while editing in an interactive terminal. |
 | `npm run build` | Create the production files in `dist/`. |
 
-Vitest checks calculation rules directly. React Testing Library and user-event check typing, correction, completion, paste limits, and repeated restarts in jsdom's simulated document. These tests do not replace real-browser checks for layout, native editing, keyboard focus, zoom, or screen-reader behavior.
+Vitest checks calculation rules directly. React Testing Library and user-event check typing, correction, completion, blocked paste, and repeated restarts in jsdom's simulated document. These tests do not replace real-browser checks for layout, native editing, keyboard focus, zoom, or screen-reader behavior.
 
 The [GitHub Actions workflow](.github/workflows/ci.yml) runs `npm ci` and `npm run check` on pull requests and pushes to `main`, using Node 24 from `.nvmrc`.
 

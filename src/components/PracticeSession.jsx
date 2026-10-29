@@ -1,15 +1,22 @@
-import { useRef, useState } from 'react'
+import { usePracticeAttempt } from '../hooks/usePracticeAttempt.js'
 import { comparePassage } from '../lib/comparePassage.js'
 import PassageDisplay from './PassageDisplay.jsx'
 
 export default function PracticeSession({ passage }) {
-  const [input, setInput] = useState('')
-  const inputRef = useRef(null)
-  const { characters, enteredCount, mistakeCount, isComplete } = comparePassage(passage, input)
+  return <PracticeSessionContent key={passage} passage={passage} />
+}
+
+function PracticeSessionContent({ passage }) {
+  const { attempt, inputRef, inputVersion, handleChange, restriction, restart } = usePracticeAttempt(passage)
+  const { input } = attempt
+  const { characters, enteredCount, mistakeCount } = comparePassage(passage, input)
+  const isComplete = attempt.status === 'completed'
 
   let status = 'Type the passage above. Match every character, including spaces and punctuation.'
 
-  if (isComplete) {
+  if (attempt.isComposing) {
+    status = 'Finish composing the current text to continue.'
+  } else if (isComplete) {
     status = 'Passage complete. Every character matches. Restart when you’re ready.'
   } else if (enteredCount === passage.length) {
     status = 'You’ve reached the end. Correct the marked characters to finish.'
@@ -17,10 +24,13 @@ export default function PracticeSession({ passage }) {
     status = 'Keep your pace. You can go back and correct any character.'
   }
 
-  function handleRestart() {
-    setInput('')
-    inputRef.current.focus()
+  if (attempt.scoringUnavailableReason) {
+    status = isComplete
+      ? 'Passage complete. Scores are unavailable because an edit could not be measured. Restart when you’re ready.'
+      : 'Scores are unavailable because an edit could not be measured. You can keep typing or restart.'
   }
+
+  if (restriction && !isComplete) status = restriction
 
   return (
     <section className="practice-panel" aria-labelledby="practice-title">
@@ -42,14 +52,18 @@ export default function PracticeSession({ passage }) {
             {mistakeCount} current {mistakeCount === 1 ? 'mistake' : 'mistakes'}
           </span>
         </div>
+        <p id="practice-instructions" className="practice-instructions">
+          Type the passage yourself. Paste and text drops are unavailable.
+        </p>
         <textarea
+          key={inputVersion}
           ref={inputRef}
           id="typing-input"
           className="typing-input"
           name="typing"
           rows={3}
           value={input}
-          onChange={event => setInput(event.target.value)}
+          onChange={handleChange}
           readOnly={isComplete}
           maxLength={passage.length}
           autoComplete="off"
@@ -57,7 +71,7 @@ export default function PracticeSession({ passage }) {
           spellCheck={false}
           placeholder="Start typing the passage here."
           aria-invalid={mistakeCount > 0}
-          aria-describedby="practice-passage practice-status"
+          aria-describedby="practice-passage practice-instructions practice-status"
         />
         <p
           id="practice-status"
@@ -89,7 +103,7 @@ export default function PracticeSession({ passage }) {
             {enteredCount} of {passage.length} characters
           </progress>
         </div>
-        <button className="restart-button" type="button" onClick={handleRestart}>
+        <button className="restart-button" type="button" onClick={restart}>
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M3 10a9 9 0 1 1 2.6 8.4M3 4v6h6" />
           </svg>
