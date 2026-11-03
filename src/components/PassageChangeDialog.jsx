@@ -39,10 +39,10 @@ export default function PassageChangeDialog({ onCancel, onConfirm }) {
         Changing passages discards your current attempt. Elapsed time continues while you decide.
       </p>
       <div className="dialog-actions">
-        <button ref={cancelRef} className="restart-button" type="button" onClick={() => decide(onCancel)}>
+        <button ref={cancelRef} className="action-button action-button--primary" type="button" onClick={() => decide(onCancel)}>
           Keep current attempt
         </button>
-        <button className="restart-button" type="button" onClick={() => decide(onConfirm)}>
+        <button className="action-button action-button--danger" type="button" onClick={() => decide(onConfirm)}>
           Discard and change
         </button>
       </div>

@@ -69,29 +69,38 @@ function PracticeSessionContent({
     <section className="practice-panel" aria-labelledby="practice-title">
       {onPassageChange && (
         <div className="passage-controls">
-          <div className="passage-choice">
-            <label htmlFor="next-passage-length">Next passage length</label>
-            <select
-              id="next-passage-length"
-              className="passage-select"
-              value={nextCategory}
-              onChange={event => onNextCategoryChange(event.target.value)}
+          <div className="passage-actions">
+            <div className="passage-choice">
+              <label htmlFor="next-passage-length">Next passage length</label>
+              <select
+                id="next-passage-length"
+                className="passage-select"
+                value={nextCategory}
+                onChange={event => onNextCategoryChange(event.target.value)}
+                aria-describedby="next-passage-hint"
+              >
+                <option value="short">Short</option>
+                <option value="medium">Medium</option>
+                <option value="long">Long</option>
+              </select>
+            </div>
+            <button
+              ref={newPassageRef}
+              className="action-button action-button--primary new-passage-button"
+              type="button"
+              onClick={requestPassage}
+              disabled={attempt.isComposing}
+              aria-describedby={attempt.isComposing ? 'passage-change-hint' : undefined}
             >
-              <option value="short">Short</option>
-              <option value="medium">Medium</option>
-              <option value="long">Long</option>
-            </select>
+              New passage
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 12h16m-6-6 6 6-6 6" />
+              </svg>
+            </button>
           </div>
-          <button
-            ref={newPassageRef}
-            className="restart-button"
-            type="button"
-            onClick={requestPassage}
-            disabled={attempt.isComposing}
-            aria-describedby={attempt.isComposing ? 'passage-change-hint' : undefined}
-          >
-            New passage
-          </button>
+          <p id="next-passage-hint" className="passage-choice-hint">
+            Your length choice applies when you choose New passage.
+          </p>
           {attempt.isComposing && (
             <p id="passage-change-hint" className="passage-change-hint">
               Finish composing the current text before changing passages.
@@ -197,7 +206,7 @@ function PracticeSessionContent({
             {enteredCount} of {passage.length} characters
           </progress>
         </div>
-        <button className="restart-button" type="button" onClick={restart}>
+        <button className="action-button restart-button" type="button" onClick={restart}>
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M3 10a9 9 0 1 1 2.6 8.4M3 4v6h6" />
           </svg>

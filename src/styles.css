@@ -9,6 +9,7 @@
   --color-muted: #b0b3b6;
   --color-subtle: #a1a6ab;
   --color-accent: #efbd69;
+  --color-accent-hover: #f5cb87;
   --color-accent-ink: #20180b;
   --color-accent-surface: #30291f;
   --color-border: #3b4148;
@@ -174,7 +175,6 @@ h1 span {
 
 .practice-panel {
   min-width: 0;
-  overflow: clip;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-large);
   background: var(--color-panel);
@@ -182,50 +182,80 @@ h1 span {
 }
 
 .passage-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
   padding: var(--space-6) var(--space-8);
   border-bottom: 1px solid var(--color-border);
 }
 
+.passage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
 .passage-choice {
   display: grid;
+  width: 15rem;
+  max-width: 100%;
+  min-width: 0;
   gap: var(--space-2);
 }
 
 .passage-choice label {
   color: var(--color-muted);
   font-size: 0.8125rem;
+  font-weight: 550;
+  line-height: 1.5;
 }
 
 .passage-select {
-  min-height: 44px;
-  padding: var(--space-2) var(--space-4);
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: var(--space-3) var(--space-4);
   border: 1px solid var(--color-input-border);
   border-radius: var(--radius-medium);
   color: var(--color-text);
   background: var(--color-field);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  cursor: pointer;
+  transition: border-color 120ms ease;
 }
 
+.passage-select:hover {
+  border-color: var(--color-accent);
+}
+
+.passage-choice-hint,
 .passage-change-hint {
-  flex-basis: 100%;
   margin: 0;
   color: var(--color-muted);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   line-height: 1.65;
 }
 
+.passage-change-hint {
+  color: var(--color-accent);
+}
+
 .passage-dialog {
-  width: min(32rem, calc(100% - 2rem));
-  max-height: calc(100% - 2rem);
-  padding: var(--space-6);
+  width: min(34rem, calc(100% - 2rem));
+  max-height: calc(100dvh - 2rem);
+  padding: var(--space-8);
   overflow: auto;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-large);
   color: var(--color-text);
   background: var(--color-panel);
+  box-shadow: 0 24px 80px #00000055;
+}
+
+.passage-dialog[open] {
+  display: grid;
+  gap: var(--space-5);
 }
 
 .passage-dialog::backdrop {
@@ -234,23 +264,23 @@ h1 span {
 
 .passage-dialog h2 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.025em;
 }
 
 .passage-dialog p {
+  margin: 0;
   color: var(--color-muted);
-  line-height: 1.65;
+  font-size: 0.9375rem;
+  line-height: 1.75;
 }
 
 .dialog-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
-}
-
-.restart-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .passage-area {
@@ -261,6 +291,7 @@ h1 span {
 .panel-heading,
 .field-heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
@@ -393,7 +424,7 @@ h1 span {
 }
 
 .status-icon,
-.restart-button svg {
+.action-button svg {
   width: 1rem;
   height: 1rem;
   flex-shrink: 0;
@@ -572,10 +603,10 @@ h1 span {
   background: var(--color-accent);
 }
 
-.restart-button {
+.action-button {
   display: inline-flex;
-  min-width: 7.5rem;
-  min-height: 44px;
+  min-width: 0;
+  min-height: 46px;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
@@ -587,13 +618,44 @@ h1 span {
   font-size: 0.875rem;
   font-weight: 550;
   line-height: 1.5;
+  text-align: center;
+  overflow-wrap: anywhere;
   cursor: pointer;
   transition: border-color 120ms ease, background-color 120ms ease;
 }
 
-.restart-button:hover {
+.action-button:hover:not(:disabled) {
   border-color: var(--color-accent);
   background: var(--color-accent-surface);
+}
+
+.action-button--primary {
+  border-color: var(--color-accent);
+  color: var(--color-accent-ink);
+  background: var(--color-accent);
+}
+
+.action-button--primary:hover:not(:disabled) {
+  border-color: var(--color-accent-hover);
+  background: var(--color-accent-hover);
+}
+
+.action-button--danger {
+  color: var(--color-error);
+}
+
+.action-button--danger:hover:not(:disabled) {
+  border-color: var(--color-error);
+  background: var(--color-error-surface);
+}
+
+.action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.restart-button {
+  min-width: 7.5rem;
 }
 
 .page-footer {
@@ -627,9 +689,27 @@ h1 span {
     margin-block: var(--space-12) var(--space-6);
   }
 
+  .passage-controls,
   .passage-area,
   .typing-area {
     padding: var(--space-5);
+  }
+
+  .passage-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .passage-choice {
+    width: 100%;
+  }
+
+  .passage-dialog {
+    padding: var(--space-5);
+  }
+
+  .dialog-actions {
+    grid-template-columns: 1fr;
   }
 
   .session-clock,
@@ -690,7 +770,8 @@ h1 span {
 
 @media (prefers-reduced-motion: reduce) {
   .typing-input,
-  .restart-button {
+  .passage-select,
+  .action-button {
     transition: none;
   }
 }
