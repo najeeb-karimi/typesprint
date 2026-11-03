@@ -1,17 +1,25 @@
+import { useRef, useState } from 'react'
 import { usePracticeAttempt } from '../hooks/usePracticeAttempt.js'
 import { comparePassage } from '../lib/comparePassage.js'
 import { formatAttemptResults, formatElapsedTime } from '../lib/formatAttemptMetrics.js'
 import PassageDisplay from './PassageDisplay.jsx'
 import AttemptResults from './AttemptResults.jsx'
+import PassageChangeDialog from './PassageChangeDialog.jsx'
 
-export default function PracticeSession({ passage }) {
-  return <PracticeSessionContent key={passage} passage={passage} />
+const CATEGORY_LABELS = { short: 'Short', medium: 'Medium', long: 'Long' }
+
+export default function PracticeSession({ passage, ...sessionProps }) {
+  return <PracticeSessionContent key={passage} passage={passage} {...sessionProps} />
 }
 
-function PracticeSessionContent({ passage }) {
+function PracticeSessionContent({
+  passage, category, nextCategory, onNextCategoryChange, onPassageChange, focusOnMount = false,
+}) {
+  const [pendingCategory, setPendingCategory] = useState(null)
+  const newPassageRef = useRef(null)
   const {
     attempt, metrics, inputRef, inputVersion, handleChange, restriction, restart,
-  } = usePracticeAttempt(passage)
+  } = usePracticeAttempt(passage, { focusOnMount })
   const { input } = attempt
   const { characters, enteredCount, mistakeCount } = comparePassage(passage, input)
   const isComplete = attempt.status === 'completed'
@@ -37,12 +45,66 @@ function PracticeSessionContent({ passage }) {
 
   if (restriction && !isComplete) status = restriction
 
+  function requestPassage() {
+    if (attempt.isComposing || pendingCategory !== null) return
+    if (attempt.status === 'running') {
+      setPendingCategory(nextCategory)
+    } else {
+      onPassageChange(nextCategory)
+    }
+  }
+
+  function cancelPassageChange() {
+    setPendingCategory(null)
+    newPassageRef.current.focus()
+  }
+
+  function confirmPassageChange() {
+    const requestedCategory = pendingCategory
+    setPendingCategory(null)
+    onPassageChange(requestedCategory)
+  }
+
   return (
     <section className="practice-panel" aria-labelledby="practice-title">
+      {onPassageChange && (
+        <div className="passage-controls">
+          <div className="passage-choice">
+            <label htmlFor="next-passage-length">Next passage length</label>
+            <select
+              id="next-passage-length"
+              className="passage-select"
+              value={nextCategory}
+              onChange={event => onNextCategoryChange(event.target.value)}
+            >
+              <option value="short">Short</option>
+              <option value="medium">Medium</option>
+              <option value="long">Long</option>
+            </select>
+          </div>
+          <button
+            ref={newPassageRef}
+            className="restart-button"
+            type="button"
+            onClick={requestPassage}
+            disabled={attempt.isComposing}
+            aria-describedby={attempt.isComposing ? 'passage-change-hint' : undefined}
+          >
+            New passage
+          </button>
+          {attempt.isComposing && (
+            <p id="passage-change-hint" className="passage-change-hint">
+              Finish composing the current text before changing passages.
+            </p>
+          )}
+        </div>
+      )}
       <div className="passage-area">
         <div className="panel-heading">
           <h2 id="practice-title">Your passage</h2>
-          <p className="passage-length">{passage.length} characters</p>
+          <p className="passage-length">
+            {category && <>{CATEGORY_LABELS[category]} · </>}{passage.length} characters
+          </p>
         </div>
         <PassageDisplay passage={passage} characters={characters} />
       </div>
@@ -142,6 +204,9 @@ function PracticeSessionContent({ passage }) {
           Restart
         </button>
       </div>
+      {pendingCategory !== null && (
+        <PassageChangeDialog onCancel={cancelPassageChange} onConfirm={confirmPassageChange} />
+      )}
     </section>
   )
 }

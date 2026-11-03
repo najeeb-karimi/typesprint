@@ -1,9 +1,21 @@
+import { useState } from 'react'
 import PracticeSession from './components/PracticeSession.jsx'
-
-const PRACTICE_PASSAGE =
-  'Small steps build steady progress. Take a breath, find your rhythm, and let each careful keystroke bring the next word into focus.'
+import { INITIAL_PASSAGE_ID, PASSAGES } from './data/passages.js'
+import { selectNextPassage } from './lib/selectNextPassage.js'
 
 export default function App() {
+  const [activePassageId, setActivePassageId] = useState(INITIAL_PASSAGE_ID)
+  const [nextCategory, setNextCategory] = useState('short')
+  const [focusNewPassage, setFocusNewPassage] = useState(false)
+  const activePassage = PASSAGES.find(passage => passage.id === activePassageId)
+
+  function changePassage(category) {
+    // Draw once for an accepted action, outside rendering and state updaters.
+    const next = selectNextPassage(PASSAGES, category, activePassageId, Math.random())
+    setActivePassageId(next.id)
+    setFocusNewPassage(true)
+  }
+
   return (
     <div className="site-shell">
       <a className="skip-link" href="#main-content">
@@ -29,7 +41,15 @@ export default function App() {
           </p>
         </div>
 
-        <PracticeSession passage={PRACTICE_PASSAGE} />
+        <PracticeSession
+          key={activePassage.id}
+          passage={activePassage.text}
+          category={activePassage.category}
+          nextCategory={nextCategory}
+          onNextCategoryChange={setNextCategory}
+          onPassageChange={changePassage}
+          focusOnMount={focusNewPassage}
+        />
       </main>
 
       <footer className="page-footer">
