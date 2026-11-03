@@ -301,3 +301,161 @@ describe('passage controls and safe switching', () => {
     expect(random).not.toHaveBeenCalled()
   })
 })
+
+describe('complete passage flows', () => {
+  it.each([
+    { category: 'short', id: 'morning-window', speed: '56', next: 'long' },
+    { category: 'medium', id: 'market-walk', speed: '99', next: 'short' },
+    { category: 'long', id: 'library-visit', speed: '174', next: 'medium' },
+  ])('scores the active $category passage, preserves finished results, and distinguishes Restart from New passage', async ({ category, id, speed, next }) => {
+    const { user } = setup()
+    const passage = PASSAGES.find(record => record.id === id)
+    await user.selectOptions(lengthChoice(), category)
+    await user.click(newPassage())
+    let field = input()
+    expect(screen.getByText(passage.text, { selector: '.sr-only' })).toBeInTheDocument()
+    expect(field).toHaveAttribute('maxlength', String(passage.text.length))
+    expect(screen.getByRole('progressbar')).toHaveAttribute('max', String(passage.text.length))
+    expect(lengthChoice()).toHaveAccessibleDescription(
+      'Your length choice applies when you choose New passage.',
+    )
+
+    await user.type(field, passage.text[0])
+    clock = 31_000
+    // One accepted insertion covers the remaining text without hundreds of
+    // identical jsdom renders. Per-key editing is exercised in the other flows.
+    const remainder = passage.text.slice(1)
+    fireEvent(field, new InputEvent('beforeinput', {
+      bubbles: true, cancelable: true, inputType: 'insertText', data: remainder,
+    }))
+    fireEvent.input(field, {
+      target: { value: passage.text }, inputType: 'insertText', data: remainder,
+    })
+    const results = screen.getByRole('region', { name: 'Your results' })
+    expect(within(results).getByText('0:30.0')).toBeVisible()
+    expect(within(results).getByText(speed)).toBeVisible()
+    expect(within(results).getByText('100.0%')).toBeVisible()
+    expect(field).toHaveAttribute('readonly')
+    expect(field).toHaveFocus()
+    expect(screen.getByRole('progressbar')).toHaveAttribute('value', String(passage.text.length))
+    expect(vi.getTimerCount()).toBe(0)
+    const announcement = screen.getByRole('status').textContent
+
+    await user.selectOptions(lengthChoice(), next)
+    refreshAt(90_000)
+    expect(input()).toBe(field)
+    expect(screen.getByRole('region', { name: 'Your results' })).toBe(results)
+    expect(screen.getByRole('status').textContent).toBe(announcement)
+    expect(random).toHaveBeenCalledTimes(1)
+
+    await user.click(screen.getByRole('button', { name: 'Restart' }))
+    expect(input()).not.toBe(field)
+    field = input()
+    expect(field).toHaveValue('')
+    expect(field).toHaveFocus()
+    expect(field).not.toHaveAttribute('readonly')
+    expect(screen.getByText(passage.text, { selector: '.sr-only' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Your results' })).toBeNull()
+    expect(screen.getByRole('timer')).toHaveTextContent('0:00')
+    expect(lengthChoice()).toHaveValue(next)
+    expect(random).toHaveBeenCalledTimes(1)
+
+    await user.click(newPassage())
+    const replacement = PASSAGES.find(record => record.category === next)
+    expect(input()).not.toBe(field)
+    expect(input()).toHaveValue('')
+    expect(input()).toHaveFocus()
+    expect(input()).toHaveAttribute('maxlength', String(replacement.text.length))
+    expect(screen.getByRole('progressbar')).toHaveAttribute('max', String(replacement.text.length))
+    expect(screen.getByText(replacement.text, { selector: '.sr-only' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Your results' })).toBeNull()
+    expect(random).toHaveBeenCalledTimes(2)
+  })
+
+  it('retains unavailable running work on cancellation and clears it with restrictions on acceptance', async () => {
+    const { user } = setup()
+    await user.selectOptions(lengthChoice(), 'long')
+    await user.click(newPassage())
+    const long = PASSAGES.find(record => record.category === 'long')
+    const oldInput = input()
+    fireEvent.change(oldInput, { target: { value: long.text[0] } })
+    expect(screen.getByRole('status')).toHaveTextContent('Scores are unavailable')
+    await user.click(oldInput)
+    await user.paste('blocked')
+    expect(screen.getByRole('status')).toHaveTextContent('Paste is unavailable.')
+    await user.selectOptions(lengthChoice(), 'short')
+    await user.click(newPassage())
+    await user.click(screen.getByRole('button', { name: 'Keep current attempt' }))
+    expect(input()).toBe(oldInput)
+    expect(input()).toHaveValue(long.text[0])
+    expect(screen.getByRole('status')).toHaveTextContent('Paste is unavailable.')
+    expect(random).toHaveBeenCalledTimes(1)
+
+    await user.click(newPassage())
+    await user.click(screen.getByRole('button', { name: 'Discard and change' }))
+    expect(input()).not.toBe(oldInput)
+    expect(input()).toHaveFocus()
+    expect(screen.getByRole('status')).not.toHaveTextContent(/unavailable/i)
+    expect(screen.getByRole('timer')).toHaveTextContent('0:00')
+    expect(screen.getByText('0 current mistakes')).toBeVisible()
+    expect(vi.getTimerCount()).toBe(0)
+    clock = 100_000
+    await user.type(input(), initial.text[0])
+    clock = 130_000
+    await user.type(input(), initial.text.slice(1))
+    const results = within(screen.getByRole('region', { name: 'Your results' }))
+    expect(results.getByText('52')).toBeVisible()
+    expect(results.getByText('100.0%')).toBeVisible()
+    expect(random).toHaveBeenCalledTimes(2)
+  })
+
+  it('creates a fresh decision on repeated dialog use without restarting the clock or reusing a consumed outcome', async () => {
+    const { user } = setup()
+    const intervals = vi.spyOn(globalThis, 'setInterval')
+    let field = input()
+    await user.type(field, 'S')
+    await user.selectOptions(lengthChoice(), 'medium')
+    for (const timestamp of [3000, 5000]) {
+      await user.click(newPassage())
+      const dialog = screen.getByRole('dialog')
+      expect(screen.getByRole('button', { name: 'Keep current attempt' })).toHaveFocus()
+      refreshAt(timestamp)
+      fireEvent(dialog, new Event('cancel', { cancelable: true }))
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(newPassage()).toHaveFocus()
+      expect(input()).toBe(field)
+      expect(input()).toHaveValue('S')
+      expect(random).not.toHaveBeenCalled()
+      expect(intervals).toHaveBeenCalledTimes(1)
+      expect(vi.getTimerCount()).toBe(1)
+    }
+
+    await user.click(newPassage())
+    await user.click(screen.getByRole('button', { name: 'Discard and change' }))
+    expect(input()).not.toBe(field)
+    expect(input()).toHaveFocus()
+    expect(vi.getTimerCount()).toBe(0)
+    field = input()
+    const medium = PASSAGES.find(record => record.category === 'medium')
+    clock = 10_000
+    await user.type(field, medium.text[0])
+    await user.selectOptions(lengthChoice(), 'long')
+    await user.click(newPassage())
+    await user.click(screen.getByRole('button', { name: 'Keep current attempt' }))
+    refreshAt(12_000)
+    expect(input()).toBe(field)
+    expect(input()).toHaveValue(medium.text[0])
+    expect(screen.getByRole('timer')).toHaveTextContent('0:02')
+
+    await user.click(newPassage())
+    await user.click(screen.getByRole('button', { name: 'Discard and change' }))
+    expect(input()).not.toBe(field)
+    expect(input()).toHaveFocus()
+    expect(lengthChoice()).toHaveValue('long')
+    expect(screen.getByRole('timer')).toHaveTextContent('0:00')
+    expect(random).toHaveBeenCalledTimes(2)
+    expect(vi.getTimerCount()).toBe(0)
+    expect(intervals).toHaveBeenCalledTimes(2)
+  })
+})
