@@ -32,6 +32,10 @@ describe('passage practice', () => {
     // Fragment navigation and its target focus are checked in a real browser.
     expect(screen.getByRole('link', { name: 'Skip to practice' })).toHaveAttribute('href', '#main-content')
     await user.tab()
+    expect(screen.getByRole('combobox', { name: 'Next passage length' })).toHaveFocus()
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'New passage' })).toHaveFocus()
+    await user.tab()
     expect(input).toHaveFocus()
     await user.tab()
     expect(screen.getByRole('button', { name: 'Restart' })).toHaveFocus()

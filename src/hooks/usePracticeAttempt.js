@@ -9,14 +9,14 @@ const RESTRICTIONS = {
 
 // The passage stays fixed for this hook's lifetime. Its component is keyed by
 // passage; Restart keys the field separately to discard old native edit history.
-export function usePracticeAttempt(passage) {
+export function usePracticeAttempt(passage, { focusOnMount = false } = {}) {
   const [attempt, setAttempt] = useState(() => createAttempt(passage))
   const [inputVersion, setInputVersion] = useState(0)
   const [restriction, setRestriction] = useState('')
   const [clockSample, setClockSample] = useState(null)
   const stopTimerRef = useRef(null)
   const editorRef = useRef(null)
-  const focusOnMount = useRef(false)
+  const focusRequestedRef = useRef(focusOnMount)
 
   const stopClock = useCallback(() => {
     stopTimerRef.current?.()
@@ -59,9 +59,9 @@ export function usePracticeAttempt(passage) {
     })
     editorRef.current = editor
 
-    if (focusOnMount.current) {
+    if (focusRequestedRef.current) {
       input.focus()
-      focusOnMount.current = false
+      focusRequestedRef.current = false
     }
 
     return () => {
@@ -81,7 +81,7 @@ export function usePracticeAttempt(passage) {
     stopClock()
     editorRef.current?.dispose()
     editorRef.current = null
-    focusOnMount.current = true
+    focusRequestedRef.current = true
     setAttempt(createAttempt(passage))
     setRestriction('')
     setInputVersion(version => version + 1)

@@ -223,7 +223,7 @@ describe('native practice input adapter', () => {
     expect(h.read()).toMatchObject({
       status: 'completed', isComposing: false, totalEntries: 3, correctEntries: 3, finishedAt: 1000,
     })
-    expect(h.onAttempt).toHaveBeenCalledTimes(3)
+    expect(h.onAttempt).toHaveBeenCalledTimes(4)
   })
 
   it('handles compositionend before the final input without counting twice', async () => {
@@ -235,7 +235,7 @@ describe('native practice input adapter', () => {
     await Promise.resolve()
 
     expect(h.read()).toMatchObject({ status: 'running', totalEntries: 3, correctEntries: 3 })
-    expect(h.onAttempt).toHaveBeenCalledTimes(2)
+    expect(h.onAttempt).toHaveBeenCalledTimes(3)
   })
 
   it('ignores a trailing unchanged-value composition input notification', async () => {
@@ -249,7 +249,7 @@ describe('native practice input adapter', () => {
     expect(h.read()).toMatchObject({
       totalEntries: 3, correctEntries: 3, scoringUnavailableReason: null,
     })
-    expect(h.onAttempt).toHaveBeenCalledTimes(2)
+    expect(h.onAttempt).toHaveBeenCalledTimes(3)
   })
 
   it('does not count canceled composition or reset a start that has already occurred', async () => {

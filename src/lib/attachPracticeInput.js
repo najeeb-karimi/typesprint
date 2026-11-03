@@ -128,6 +128,8 @@ export function attachPracticeInput(input, {
     pending = null
     compositionTail = null
     composition = { before: snapshot(input), ended: false }
+    // Report composition immediately, even before it produces provisional text.
+    publish({ isComposing: true })
   }
 
   function compositionEnd(event) {
