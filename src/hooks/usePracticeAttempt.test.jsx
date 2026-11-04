@@ -1,11 +1,11 @@
 import { StrictMode } from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { usePracticeAttempt } from './usePracticeAttempt.js'
 
-function AttemptHarness() {
-  const { attempt, inputRef, inputVersion, handleChange, restriction, restart } = usePracticeAttempt('cat')
+function AttemptHarness({ onComplete }) {
+  const { attempt, inputRef, inputVersion, handleChange, restriction, restart } = usePracticeAttempt('cat', { onComplete })
 
   return (
     <>
@@ -165,4 +165,37 @@ describe('React attempt integration', () => {
     expect(readAttempt().scoringUnavailableReason).toBeNull()
   })
 
+})
+
+describe('completion callback ownership', () => {
+  it('uses the latest callback without reconnecting the editor and starts a new delivery only after Restart', async () => {
+    const first = vi.fn()
+    const latest = vi.fn()
+    const user = userEvent.setup()
+    const { rerender } = render(<StrictMode><AttemptHarness onComplete={first} /></StrictMode>)
+    const input = screen.getByRole('textbox')
+    await user.type(input, 'c')
+    const add = vi.spyOn(input, 'addEventListener')
+    const remove = vi.spyOn(input, 'removeEventListener')
+    rerender(<StrictMode><AttemptHarness onComplete={latest} /></StrictMode>)
+    expect(screen.getByRole('textbox')).toBe(input)
+    await user.type(input, 'at')
+    expect(first).not.toHaveBeenCalled()
+    expect(latest).toHaveBeenCalledTimes(1)
+    const completed = latest.mock.calls[0][0]
+    expect(completed).toMatchObject({
+      input: 'cat', status: 'completed', totalEntries: 3, correctEntries: 3,
+    })
+    expect(add).not.toHaveBeenCalled()
+    expect(remove).not.toHaveBeenCalled()
+    fireEvent.change(input, { target: { value: 'cat' } })
+    rerender(<StrictMode><AttemptHarness onComplete={first} /></StrictMode>)
+    expect(first).not.toHaveBeenCalled()
+    expect(latest).toHaveBeenCalledTimes(1)
+    await user.click(screen.getByRole('button', { name: 'Restart' }))
+    await user.type(screen.getByRole('textbox'), 'cat')
+    expect(first).toHaveBeenCalledTimes(1)
+    expect(first.mock.calls[0][0]).not.toBe(completed)
+    expect(completed).toMatchObject({ status: 'completed', input: 'cat', totalEntries: 3 })
+  })
 })

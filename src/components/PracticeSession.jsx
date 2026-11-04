@@ -1,10 +1,10 @@
-import { useRef, useState } from 'react'
+import { useCallback } from 'react'
 import { usePracticeAttempt } from '../hooks/usePracticeAttempt.js'
 import { comparePassage } from '../lib/comparePassage.js'
 import { formatAttemptResults, formatElapsedTime } from '../lib/formatAttemptMetrics.js'
 import PassageDisplay from './PassageDisplay.jsx'
 import AttemptResults from './AttemptResults.jsx'
-import PassageChangeDialog from './PassageChangeDialog.jsx'
+import PassageControls from './PassageControls.jsx'
 
 const CATEGORY_LABELS = { short: 'Short', medium: 'Medium', long: 'Long' }
 
@@ -13,13 +13,15 @@ export default function PracticeSession({ passage, ...sessionProps }) {
 }
 
 function PracticeSessionContent({
-  passage, category, nextCategory, onNextCategoryChange, onPassageChange, focusOnMount = false,
+  passage, passageId, category, nextCategory, onNextCategoryChange, onPassageChange,
+  focusOnMount = false, isActive = true, onComplete, completionStatus,
 }) {
-  const [pendingCategory, setPendingCategory] = useState(null)
-  const newPassageRef = useRef(null)
+  const reportCompletion = useCallback(attempt => {
+    onComplete?.({ passageId, category, attempt })
+  }, [onComplete, passageId, category])
   const {
     attempt, metrics, inputRef, inputVersion, handleChange, restriction, restart,
-  } = usePracticeAttempt(passage, { focusOnMount })
+  } = usePracticeAttempt(passage, { focusOnMount, onComplete: reportCompletion })
   const { input } = attempt
   const { characters, enteredCount, mistakeCount } = comparePassage(passage, input)
   const isComplete = attempt.status === 'completed'
@@ -45,68 +47,16 @@ function PracticeSessionContent({
 
   if (restriction && !isComplete) status = restriction
 
-  function requestPassage() {
-    if (attempt.isComposing || pendingCategory !== null) return
-    if (attempt.status === 'running') {
-      setPendingCategory(nextCategory)
-    } else {
-      onPassageChange(nextCategory)
-    }
-  }
-
-  function cancelPassageChange() {
-    setPendingCategory(null)
-    newPassageRef.current.focus()
-  }
-
-  function confirmPassageChange() {
-    const requestedCategory = pendingCategory
-    setPendingCategory(null)
-    onPassageChange(requestedCategory)
-  }
-
   return (
     <section className="practice-panel" aria-labelledby="practice-title">
-      {onPassageChange && (
-        <div className="passage-controls">
-          <div className="passage-actions">
-            <div className="passage-choice">
-              <label htmlFor="next-passage-length">Next passage length</label>
-              <select
-                id="next-passage-length"
-                className="passage-select"
-                value={nextCategory}
-                onChange={event => onNextCategoryChange(event.target.value)}
-                aria-describedby="next-passage-hint"
-              >
-                <option value="short">Short</option>
-                <option value="medium">Medium</option>
-                <option value="long">Long</option>
-              </select>
-            </div>
-            <button
-              ref={newPassageRef}
-              className="action-button action-button--primary new-passage-button"
-              type="button"
-              onClick={requestPassage}
-              disabled={attempt.isComposing}
-              aria-describedby={attempt.isComposing ? 'passage-change-hint' : undefined}
-            >
-              New passage
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M4 12h16m-6-6 6 6-6 6" />
-              </svg>
-            </button>
-          </div>
-          <p id="next-passage-hint" className="passage-choice-hint">
-            Your length choice applies when you choose New passage.
-          </p>
-          {attempt.isComposing && (
-            <p id="passage-change-hint" className="passage-change-hint">
-              Finish composing the current text before changing passages.
-            </p>
-          )}
-        </div>
+      {isActive && onPassageChange && (
+        <PassageControls
+          attemptStatus={attempt.status}
+          isComposing={attempt.isComposing}
+          nextCategory={nextCategory}
+          onNextCategoryChange={onNextCategoryChange}
+          onPassageChange={onPassageChange}
+        />
       )}
       <div className="passage-area">
         <div className="panel-heading">
@@ -171,6 +121,16 @@ function PracticeSessionContent({
         </p>
       </div>
 
+      <p className="save-error" aria-live="polite" aria-atomic="true">
+        {isComplete && completionStatus?.attempt === attempt && completionStatus.state === 'failed'
+          ? completionStatus.message : ''}
+      </p>
+      {isComplete && completionStatus?.attempt === attempt && completionStatus.state !== 'failed' && (
+        <p className="save-message">
+          {completionStatus.state === 'saving' ? 'Saving result…' : 'Saved in this browser.'}
+        </p>
+      )}
+
       {isComplete ? (
         <AttemptResults results={results} />
       ) : (
@@ -213,9 +173,6 @@ function PracticeSessionContent({
           Restart
         </button>
       </div>
-      {pendingCategory !== null && (
-        <PassageChangeDialog onCancel={cancelPassageChange} onConfirm={confirmPassageChange} />
-      )}
     </section>
   )
 }
