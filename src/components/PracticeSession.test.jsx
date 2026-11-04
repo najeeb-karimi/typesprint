@@ -28,9 +28,13 @@ describe('passage practice', () => {
     expect(screen.getByRole('status')).toHaveTextContent(READY_MESSAGE)
 
     await user.tab()
-    expect(screen.getByRole('link', { name: 'Skip to practice' })).toHaveFocus()
+    expect(screen.getByRole('link', { name: 'Skip to main content' })).toHaveFocus()
     // Fragment navigation and its target focus are checked in a real browser.
-    expect(screen.getByRole('link', { name: 'Skip to practice' })).toHaveAttribute('href', '#main-content')
+    expect(screen.getByRole('link', { name: 'Skip to main content' })).toHaveAttribute('href', '#main-content')
+    await user.tab()
+    expect(screen.getByRole('link', { name: 'Practice', exact: true })).toHaveFocus()
+    await user.tab()
+    expect(screen.getByRole('link', { name: 'History', exact: true })).toHaveFocus()
     await user.tab()
     expect(screen.getByRole('combobox', { name: 'Next passage length' })).toHaveFocus()
     await user.tab()

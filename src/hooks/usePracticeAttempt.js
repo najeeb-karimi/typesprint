@@ -9,7 +9,7 @@ const RESTRICTIONS = {
 
 // The passage stays fixed for this hook's lifetime. Its component is keyed by
 // passage; Restart keys the field separately to discard old native edit history.
-export function usePracticeAttempt(passage, { focusOnMount = false } = {}) {
+export function usePracticeAttempt(passage, { focusOnMount = false, onComplete } = {}) {
   const [attempt, setAttempt] = useState(() => createAttempt(passage))
   const [inputVersion, setInputVersion] = useState(0)
   const [restriction, setRestriction] = useState('')
@@ -17,6 +17,12 @@ export function usePracticeAttempt(passage, { focusOnMount = false } = {}) {
   const stopTimerRef = useRef(null)
   const editorRef = useRef(null)
   const focusRequestedRef = useRef(focusOnMount)
+  const onCompleteRef = useRef(onComplete)
+  const completionReportedRef = useRef(false)
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete
+  }, [onComplete])
 
   const stopClock = useCallback(() => {
     stopTimerRef.current?.()
@@ -52,6 +58,10 @@ export function usePracticeAttempt(passage, { focusOnMount = false } = {}) {
         if (next.status === 'completed') stopClock()
         setAttempt(next)
         setRestriction('')
+        if (next.status === 'completed' && !completionReportedRef.current) {
+          completionReportedRef.current = true
+          onCompleteRef.current?.(next)
+        }
       },
       onRestricted(kind) {
         setRestriction(RESTRICTIONS[kind])
@@ -82,6 +92,7 @@ export function usePracticeAttempt(passage, { focusOnMount = false } = {}) {
     editorRef.current?.dispose()
     editorRef.current = null
     focusRequestedRef.current = true
+    completionReportedRef.current = false
     setAttempt(createAttempt(passage))
     setRestriction('')
     setInputVersion(version => version + 1)
