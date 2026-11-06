@@ -81,7 +81,8 @@ describe('elapsed time and completed results', () => {
   })
 
   it('shows 52 WPM for the real 130-character passage completed in thirty seconds', async () => {
-    const typing = user()
+    // Keep every key event; per-key timeout delays do not drive this controlled clock.
+    const typing = userEvent.setup({ delay: null })
     render(<App />)
     const input = screen.getByRole('textbox')
     const passage = screen.getByText(/Small steps build steady progress\./, { selector: '.sr-only' }).textContent
