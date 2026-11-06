@@ -7,6 +7,7 @@ import { createHistoryController } from './lib/createHistoryController.js'
 import { createResultRecord } from './lib/resultHistory.js'
 import { selectNextPassage } from './lib/selectNextPassage.js'
 
+const CLEAR_FAILURE = 'Saved results could not be cleared. Previously saved results have not been changed.'
 const SAVE_FAILURE = 'This result could not be saved. Your practice result is still available.'
 
 export default function App({ historyController } = {}) {
@@ -19,6 +20,8 @@ export default function App({ historyController } = {}) {
   const [nextCategory, setNextCategory] = useState('short')
   const [focusNewPassage, setFocusNewPassage] = useState(false)
   const [completionStatus, setCompletionStatus] = useState(null)
+  const [clearStatus, setClearStatus] = useState({ state: 'idle' })
+  const clearPendingRef = useRef(false)
   const activePassage = PASSAGES.find(passage => passage.id === activePassageId)
 
   useEffect(() => {
@@ -33,6 +36,7 @@ export default function App({ historyController } = {}) {
 
   const recordCompletion = useCallback(({ passageId, category, attempt }) => {
     setCompletionStatus({ attempt, state: 'saving' })
+    if (!clearPendingRef.current) setClearStatus({ state: 'idle' })
     function finish(response) {
       setCompletionStatus(current => current?.attempt !== attempt ? current : {
         attempt,
@@ -50,6 +54,23 @@ export default function App({ historyController } = {}) {
       finish({ ok: false })
     }
   }, [controller])
+
+  async function clearSavedResults() {
+    if (clearPendingRef.current) return
+    clearPendingRef.current = true
+    setClearStatus({ state: 'clearing' })
+    try {
+      const response = await controller.clear()
+      setClearStatus({
+        state: response.ok ? 'cleared' : 'failed',
+        message: response.error?.message ?? CLEAR_FAILURE,
+      })
+    } catch {
+      setClearStatus({ state: 'failed', message: CLEAR_FAILURE })
+    } finally {
+      clearPendingRef.current = false
+    }
+  }
 
   function changePassage(category) {
     // Draw once for an accepted action, outside rendering and state updaters.
@@ -113,7 +134,15 @@ export default function App({ historyController } = {}) {
           />
         </div>
 
-        {view === 'history' && <HistoryView history={saved.history} error={saved.error} headingRef={historyHeadingRef} />}
+        {view === 'history' && (
+          <HistoryView
+            history={saved.history}
+            error={saved.error}
+            headingRef={historyHeadingRef}
+            onClear={clearSavedResults}
+            clearStatus={clearStatus}
+          />
+        )}
       </main>
 
       <footer className="page-footer">
