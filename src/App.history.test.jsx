@@ -39,6 +39,7 @@ function environment(records = []) {
   function create() {
     const controller = createHistoryController({
       getStorage: () => storage, getLockManager: () => locks, eventTarget: events,
+      waitForNextTask: () => Promise.resolve(),
     })
     return { ...controller, record: vi.fn(controller.record), clear: vi.fn(controller.clear) }
   }
