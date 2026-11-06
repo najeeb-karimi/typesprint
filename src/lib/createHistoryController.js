@@ -27,6 +27,7 @@ export function createHistoryController({
   getStorage = () => window.localStorage,
   getLockManager = () => navigator.locks,
   eventTarget = window,
+  waitForNextTask = () => new Promise(resolve => setTimeout(resolve, 0)),
 } = {}) {
   const subscribers = new Set()
   let history = createEmptyHistory()
@@ -106,7 +107,7 @@ export function createHistoryController({
     }
 
     try {
-      return await locks.request(RESULTS_LOCK_NAME, { mode: 'exclusive' }, () => {
+      return await locks.request(RESULTS_LOCK_NAME, { mode: 'exclusive' }, async () => {
         let next
         let outcome
         try {
@@ -129,6 +130,11 @@ export function createHistoryController({
             : operation === 'clear' ? 'clear-failed' : 'write-failed'
           return fail(code, operation)
         }
+        // Firefox checkpoints buffered localStorage changes at the end of a task.
+        // Keep the lock until a new task, before another tab can read and overwrite
+        // an older snapshot. A resolved Promise alone only yields a microtask.
+        // https://bugzilla.mozilla.org/show_bug.cgi?id=1740144#c25
+        if (outcome !== 'duplicate') await waitForNextTask()
         // Publish inside the lock, only after the persistent operation succeeds.
         publish(next, null)
         return Object.freeze({ ok: true, outcome })

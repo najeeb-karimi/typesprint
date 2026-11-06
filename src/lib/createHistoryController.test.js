@@ -46,7 +46,10 @@ function harness(raw = null) {
   const locks = lockQueue()
   const events = new EventTarget()
   const getStorage = vi.fn(() => storage)
-  const options = { getStorage, getLockManager: () => locks, eventTarget: events }
+  const options = {
+    getStorage, getLockManager: () => locks, eventTarget: events,
+    waitForNextTask: () => Promise.resolve(),
+  }
   const create = changes => createHistoryController({ ...options, ...changes })
   function change(properties = {}) {
     const event = new Event('storage')
@@ -398,5 +401,81 @@ describe('serialized history operations', () => {
     expect((await pending).ok).toBe(true)
     expect(callback).not.toHaveBeenCalled()
     expect(controller.getSnapshot().history.recent[0].id).toBe('result-1')
+  })
+})
+
+describe('storage visibility before releasing the lock', () => {
+  function bufferedStorage(raw = null) {
+    const h = harness(raw)
+    const gate = deferred()
+    let staged = null
+    // Model browser writes that are not visible to another tab until task end.
+    h.storage.setItem.mockImplementation((key, value) => { staged = { key, value } })
+    h.storage.removeItem.mockImplementation(key => { staged = { key, value: null } })
+    const boundary = vi.fn(async () => {
+      if (boundary.mock.calls.length === 1) await gate.promise
+      if (staged.value === null) h.values.delete(staged.key)
+      else h.values.set(staged.key, staged.value)
+      staged = null
+    })
+    return { ...h, gate, boundary, createBuffered: () => h.create({ waitForNextTask: boundary }) }
+  }
+
+  it('keeps another save queued and success unpublished until the buffered write is visible', async () => {
+    const h = bufferedStorage()
+    const first = h.createBuffered()
+    const second = h.createBuffered()
+    const { callback } = subscribe(first)
+    h.storage.getItem.mockClear()
+    const operations = [first.record(result('one')), second.record(result('two'))]
+    await Promise.resolve()
+    expect(h.boundary).toHaveBeenCalledTimes(1)
+    expect(h.storage.getItem).toHaveBeenCalledTimes(1)
+    expect(h.values.has(RESULTS_STORAGE_KEY)).toBe(false)
+    expect(first.getSnapshot().history.recent).toEqual([])
+    expect(callback).not.toHaveBeenCalled()
+    h.gate.resolve()
+    expect((await Promise.all(operations)).every(response => response.ok)).toBe(true)
+    expect(parseHistory(h.values.get(RESULTS_STORAGE_KEY)).recent.map(item => item.id)).toEqual(['two', 'one'])
+    expect(h.boundary).toHaveBeenCalledTimes(2)
+  })
+
+  it.each([
+    ['save-then-clear', []],
+    ['clear-then-save', ['new']],
+  ])('preserves %s ordering when each mutation is buffered until the task boundary', async (order, expected) => {
+    const raw = saved(result('existing', { wpm: 200 }))
+    const h = bufferedStorage(raw)
+    const first = h.createBuffered()
+    const second = h.createBuffered()
+    const operations = order === 'save-then-clear'
+      ? [first.record(result('new')), second.clear()]
+      : [first.clear(), second.record(result('new'))]
+    await Promise.resolve()
+    expect(h.values.get(RESULTS_STORAGE_KEY)).toBe(raw)
+    expect(first.getSnapshot().history.recent[0].id).toBe('existing')
+    h.gate.resolve()
+    expect((await Promise.all(operations)).every(response => response.ok)).toBe(true)
+    const history = parseHistory(h.values.get(RESULTS_STORAGE_KEY) ?? null)
+    expect(history.recent.map(item => item.id)).toEqual(expected)
+    expect(history.bests.short?.id ?? null).toBe(expected[0] ?? null)
+    expect(h.values.get('another-app')).toBe('leave this alone')
+  })
+
+  it('uses a browser task by default rather than releasing after only a microtask', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      const h = harness()
+      const controller = h.create({ waitForNextTask: undefined })
+      const pending = controller.record(result())
+      await Promise.resolve()
+      expect(vi.getTimerCount()).toBe(1)
+      expect(controller.getSnapshot().history.recent).toEqual([])
+      await vi.runAllTimersAsync()
+      expect(await pending).toEqual({ ok: true, outcome: 'saved' })
+      expect(controller.getSnapshot().history.recent[0].id).toBe('result-1')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
